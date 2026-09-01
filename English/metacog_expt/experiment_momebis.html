@@ -307,37 +307,31 @@ var check_consent = function(elem) {
 
 
 //EXECUTE RUN FOR THE EXPERIMENT
+		jsPsych.data.addProperties({ subject_id: subject_id });
+
 		jsPsych.init({
 		experiment_structure: tasks,
 		display_element: $('#jspsych-target'),
 		show_progress_bar: false,
-		on_trial_finish: function() {
 
+		on_trial_finish: function() {
 			var n = jsPsych.data.getData().length;
 			if (n - lastUpload >= 200) { lastUpload = n; saveToDataPipe('checkpoint'); }
 		},
 
-		});
-
-     
 		on_finish: function() {
 			$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Saving your data \u2014 please do not close this window.</p>');
 			saveToDataPipe('final', function() {
 				$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you for taking part!</p>');
-				//TO REDIRECT TO PROLIFIC, UNCOMMENT AND PASTE YOUR COMPLETION URL:
 				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU';
-				//?subject=' + encodeURIComponent(subject_id);
 			});
 		}
 		});
 
 		}
 
-		
-		
 	</script>
 </html>
-
 
 
 
