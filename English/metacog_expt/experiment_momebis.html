@@ -19,6 +19,7 @@
     <script src="jspsych-4.3/plugins/jspsych-doublestim_mome.js"></script>
     <script src="jspsych-4.3/plugins/jspsych-fullscreen.js"></script>
 	<script src="jspsych-4.3/plugins/jspsych-survey-multi-choice-mod.js"></script>
+	<script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
 
     <link href="jspsych-4.3/css/jspsych.css" rel="stylesheet" type="text/css"></link>
 	   
@@ -154,40 +155,31 @@ else
 
 
 
-//CODE TO SAVE FULLDATA AT THE END
-function save_data(alldata){
-  var data_table = "mydatabase"; // change this for different experiments
-  $.ajax({
-      type:'post',
-      cache: false,
-      url: 'savedata.php',
-      data: {
-         table: data_table,
-         json: JSON.stringify(alldata)
-      },
-     success: function(output) { console.log(output); } // write the result to javascript console
-   });
-};
+//SAVE DATA TO DATAPIPE (-> OSF)
+//DataPipe writes one NEW file per POST and refuses duplicate filenames,
+//so every upload gets a unique name. dataAsCSV() always returns ALL data
+//collected so far, so the newest file for a participant is the complete one
+//and the earlier "checkpoint" files are only insurance against drop-outs.
 
+var DATAPIPE_ID = "o0RPg1oBMGvI";
+var lastUpload  = 0;
 
-//CODE TO SAVE DATA PER TRIAL
-function save_data_pt(alldata){
-  var data_table = "mydatabase_trialdata"; // change this for different experiments
-  $.ajax({
-      type:'post',
-      cache: false,
-      url: 'savedata.php',
-      data: {
-         table: data_table,
-         json: JSON.stringify(alldata)
-      },
-     success: function(output) { console.log(output); } // write the result to javascript console
-   });
-}		;
-					
-	
-					
-					
+function saveToDataPipe(tag, done) {
+  fetch('https://pipe.jspsych.org/api/data/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': '*/*' },
+    body: JSON.stringify({
+      experimentID: DATAPIPE_ID,
+      filename: subject_id + '_' + tag + '_' + Date.now() + '.csv',
+      data: jsPsych.data.dataAsCSV()
+    })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (res) { console.log('[datapipe ' + tag + ']', res); if (done) done(); })
+  .catch(function (e) { console.error('[datapipe ' + tag + '] failed', e); if (done) done(); });
+}
+
+				
 
 //EXPERIMENT PARAMETERS
        
@@ -196,122 +188,13 @@ function save_data_pt(alldata){
 		var numPrac   = 26;
 		var numBlocks = 3;
 		var numTrials = 36;
-		var subject_id = Math.floor(Math.random()*9000000) + 1000000;
 		
 		
 		
-//CODE TO GET WORKER ID FROM THE URL FROM MTURK
-
-	function $_GET(param) 
-	{
-		var vars = {};
-		window.location.href.replace( 
-			/[?&]+([^=&]+)=?([^&]*)?/gi, // regexp
-			function( m, key, value ) { // callback
-				vars[key] = value !== undefined ? value : '';
-			}
-		);
-
-		if ( param ) 
-		{
-			return vars[param] ? vars[param] : null;	
-		}
-		return vars;
-	}
-
-	
-//GET THE WORKERID
-		if ($_GET('workerId') !== null)
-     	{var worker_id = $_GET('workerId');}
-		else
-		  { 
-		  
-
-//IF WORKERID IS NOT APPENDED, GENERATE RANDOM WORKERID FOR THEM
-		var rannum = Math.floor(Math.random()*900000000000) + 100000000000;
-		var worker_id = 'A' +rannum+ 'Z';
-				  
-		}
-		
-
+//CODE TO GET ID FROM study link
+	var subject_id = new URLSearchParams(window.location.search).get('subject') || 'anon';
 			
 		
-//CODE TO GENERATE AND CHECK FOR UNIQUE SUBJECT ID		
-function checkSubID(curSubID)
-{
-	$.ajax({
-		type:'post',
-		cache: false,
-		url: 'checkSubID.php',
-		data: 
-		{
-			curbSubID: curSubID
-		},
-		success: function(output) 
-		{
-		
-			exists=output.match(/\d/);
-
-			if (exists[0] === 1 || exists[0] === '1')
-			{
-				//alert(subject_id +' exists, try again: ');
-				subject_id = Math.floor(Math.random()*9000000) + 1000000;
-				checkSubID(subject_id);
-			}
-			else
-			{
-				jsPsych.data.addProperties({subject_id: subject_id});
-			}
-		},
-		error: function (xhr, ajaxOptions, thrownError) 
-		{
-			alert(thrownError);
-		}
-	});
-}
-			
-
-			
-//CHECK IF WORKERID ALREADY EXISTS IN DATA, IF SO, PREVENT ACCESS FROM EXPERIMENT	
-function checkWorkID(curWorkID)
-{
-$.ajax({
-	type:'post',
-	cache: false,
-	url: 'checkWorkID.php',
-	data: 
-	{
-		curWorkID: curWorkID
-	},
-	
-	success: function(output) 
-	{				
-		exists=output.match(/\d/);
-	
-		if (exists[0] === 1 || exists[0] === '1')
-		{
-			alert("You have completed this experiment before!");
-			jsPsych.endExperiment("You have completed this experiment before!");
-			document.write(' ');
-		}
-		else 
-		{
-			jsPsych.data.addProperties({worker_id: worker_id});
-		}
-	},
-	error: function (xhr, ajaxOptions, thrownError) 
-	{
-		alert(thrownError);
-	}
-});
-}
-
-			
-	
-//EXECUTE THE CHECK SUBJECTID AND WORKERID CODES
-			checkSubID(subject_id);
-			checkWorkID(worker_id);
-	
 	
 ////////////////////////////////
 //START OF EXPERIMENT PLUGINS//
@@ -374,24 +257,7 @@ var check_consent = function(elem) {
 				 
 			
 //ENTER SUBJECT DETAILS PLUGIN
-	    var subdetails = {
-	   		type: 'survey-text',
-	    	preamble: ['<p style = "text-align: center; font-size: 28px">Please enter the following:</p>'], 
-	    	questions: [["Subject ID?", "Session? [1 or 2]"]],
-	    	rows: [[3,3]],
-	    	columns: [[40,40]],
-	   		data: {label: 'subdetails', trialType: 'subdetails'}
-	    };
-
-	    var subdetails2 = {
-	   		type: 'survey-text',
-	    	preamble: ['<p style = "text-align: center; font-size: 28px">Please enter the following:</p>'], 
-	    	questions: [["Gender (f/m)?", "Age?"]],
-	    	rows: [[3,3]],
-	    	columns: [[40,40]],
-	   		data: {label: 'subdetails2', trialType: 'subdetails2'}
-	    };
-		
+	
 
 //CALLS EXPERIMENT TASK (IN ANOTHER JS SCRIPT)
 		var metacog_task = metatask_mome(practice, numPrac, numBlocks, numTrials); 
@@ -448,28 +314,25 @@ var check_consent = function(elem) {
 		show_progress_bar: false,
 		on_trial_finish: function() {
 
-		jsPsych.data.addProperties({
-
-		subject_id : subject_id,
-		worker_id: worker_id
+			var n = jsPsych.data.getData().length;
+			if (n - lastUpload >= 200) { lastUpload = n; saveToDataPipe('checkpoint'); }
+		},
 
 		});
 
-		//save_data_pt([jsPsych.data.getLastTrialData()]);
-		
-
-		},
-
-
      
-		on_finish: function() {jsPsych.data.localSave('mydata_subj' + subject_id + 'local.csv', 'csv');
-		document.write('<p><br></br><br></br><center>Thank you for participating! <br></br> Your data code is <strong>'+subject_id+'</strong>.<br> Please wait for the experimenter.</center><p>')           
+		on_finish: function() {
+			$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Saving your data \u2014 please do not close this window.</p>');
+			saveToDataPipe('final', function() {
+				$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you for taking part!</p>');
+				//TO REDIRECT TO PROLIFIC, UNCOMMENT AND PASTE YOUR COMPLETION URL:
+				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU;
+				//?subject=' + encodeURIComponent(subject_id);
+			});
 		}
+		});
 
-
-		});	   
-
-		} 
+		}
 
 		
 		
