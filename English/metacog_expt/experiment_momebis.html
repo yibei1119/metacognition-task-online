@@ -19,7 +19,6 @@
     <script src="jspsych-4.3/plugins/jspsych-doublestim_mome.js"></script>
     <script src="jspsych-4.3/plugins/jspsych-fullscreen.js"></script>
 	<script src="jspsych-4.3/plugins/jspsych-survey-multi-choice-mod.js"></script>
-	<script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
 
     <link href="jspsych-4.3/css/jspsych.css" rel="stylesheet" type="text/css"></link>
 	   
@@ -326,7 +325,7 @@ var check_consent = function(elem) {
 			saveToDataPipe('final', function() {
 				$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you for taking part!</p>');
 				//TO REDIRECT TO PROLIFIC, UNCOMMENT AND PASTE YOUR COMPLETION URL:
-				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU;
+				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU';
 				//?subject=' + encodeURIComponent(subject_id);
 			});
 		}
