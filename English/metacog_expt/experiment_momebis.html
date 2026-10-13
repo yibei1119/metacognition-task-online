@@ -168,7 +168,7 @@ var TEST_MODE = true;
 //collected so far, so the newest file for a participant is the complete one
 //and the earlier "checkpoint" files are only insurance against drop-outs.
 
-var DATAPIPE_ID = "o0RPg1oBMGvI";
+var DATAPIPE_ID = "gV2AAcMG6x05";
 var SURVEY_URL  = "https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU";
 var CHECKPOINT_EVERY_ROWS = TEST_MODE ? 40 : 200;
 var lastUpload  = 0;
@@ -207,9 +207,9 @@ function saveToDataPipe(tag, done) {
        
 			
 		var practice  = 1;
-		var numPrac   = TEST_MODE ?  5 : 26;
+		var numPrac   = TEST_MODE ?  1 : 26;
 		var numBlocks = TEST_MODE ?  3 :  3;
-		var numTrials = TEST_MODE ?  5 : 36;
+		var numTrials = TEST_MODE ?  1 : 36;
 		//NB only ever LOWER these: stimdeviset.js has hard-coded position
 		//arrays of 26 practice and 36x3 trials. Going higher yields undefined.
 		
