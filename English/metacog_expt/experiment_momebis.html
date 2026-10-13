@@ -154,13 +154,23 @@ else
 
 
 
-//SAVE DATA TO DATAPIPE (-> OSF)
+//=====================================================================
+//TEST MODE  -- set to false before collecting real data. That one switch
+//restores the full task; you never have to remember individual numbers.
+//=====================================================================
+var TEST_MODE = true;
+
+
+//SAVE DATA TO DATAPIPE  (storage provider is set on the DataPipe dashboard;
+//the code below is identical for OSF, Google Drive, Dataverse or Zenodo)
 //DataPipe writes one NEW file per POST and refuses duplicate filenames,
 //so every upload gets a unique name. dataAsCSV() always returns ALL data
 //collected so far, so the newest file for a participant is the complete one
 //and the earlier "checkpoint" files are only insurance against drop-outs.
 
 var DATAPIPE_ID = "o0RPg1oBMGvI";
+var SURVEY_URL  = "https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU";
+var CHECKPOINT_EVERY_ROWS = TEST_MODE ? 40 : 200;
 var lastUpload  = 0;
 
 function saveToDataPipe(tag, done) {
@@ -173,9 +183,23 @@ function saveToDataPipe(tag, done) {
       data: jsPsych.data.dataAsCSV()
     })
   })
-  .then(function (r) { return r.json(); })
-  .then(function (res) { console.log('[datapipe ' + tag + ']', res); if (done) done(); })
-  .catch(function (e) { console.error('[datapipe ' + tag + '] failed', e); if (done) done(); });
+  .then(function (r) {
+    return r.json()
+      .catch(function () { return {}; })
+      .then(function (body) { return { status: r.status, body: body }; });
+  })
+  .then(function (res) {
+    //201 = stored. 202 = accepted and queued for retry by DataPipe -- also a
+    //success, do NOT resubmit. Anything else is a real failure.
+    var ok = (res.status === 200 || res.status === 201 || res.status === 202);
+    if (ok) console.log('[datapipe ' + tag + '] OK ' + res.status, res.body);
+    else    console.error('[datapipe ' + tag + '] FAILED ' + res.status, res.body);
+    if (done) done(ok);
+  })
+  .catch(function (e) {
+    console.error('[datapipe ' + tag + '] network error', e);
+    if (done) done(false);
+  });
 }
 
 
@@ -183,9 +207,11 @@ function saveToDataPipe(tag, done) {
        
 			
 		var practice  = 1;
-		var numPrac   = 26;
-		var numBlocks = 3;
-		var numTrials = 36;
+		var numPrac   = TEST_MODE ?  5 : 26;
+		var numBlocks = TEST_MODE ?  3 :  3;
+		var numTrials = TEST_MODE ?  5 : 36;
+		//NB only ever LOWER these: stimdeviset.js has hard-coded position
+		//arrays of 26 practice and 36x3 trials. Going higher yields undefined.
 		
 		
 		
@@ -262,15 +288,27 @@ function saveToDataPipe(tag, done) {
 		//so a participant who quits half way still leaves usable data.
 		on_trial_finish: function() {
 			var n = jsPsych.data.getData().length;
-			if (n - lastUpload >= 200) { lastUpload = n; saveToDataPipe('checkpoint'); }
+			if (n - lastUpload >= CHECKPOINT_EVERY_ROWS) { lastUpload = n; saveToDataPipe('checkpoint'); }
 		},
 
 		on_finish: function() {
 			$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Saving your data \u2014 please do not close this window.</p>');
-			saveToDataPipe('final', function() {
-				$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you for taking part!</p>');
-				//TO REDIRECT TO PROLIFIC, UNCOMMENT AND PASTE YOUR COMPLETION URL:
-				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU?subject=subject_id';
+
+			saveToDataPipe('final', function(ok) {
+				if (ok) {
+					//No query string: Qualtrics Save & Continue restores the SAME
+					//response via cookie, keeping the randomised task order.
+					$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you! Taking you back to the questionnaire\u2026</p>');
+					window.location = SURVEY_URL;
+				} else {
+					//Deliberately does NOT redirect, so a failed save is visible
+					//instead of silent. To send them on regardless, move the
+					//window.location line out of this if/else.
+					$('#jspsych-target').html(
+						'<p style="text-align:center; font-size:22px">Your data could not be saved.</p>' +
+						'<p style="text-align:center; font-size:18px">Please do not close this window and contact the researcher.</p>' +
+						'<p style="text-align:center; font-size:16px">Code: ' + subject_id + '</p>');
+				}
 			});
 		}
 		});
@@ -279,5 +317,8 @@ function saveToDataPipe(tag, done) {
 
 	</script>
 </html>
+
+
+
 
 
