@@ -178,7 +178,6 @@ function saveToDataPipe(tag, done) {
   .catch(function (e) { console.error('[datapipe ' + tag + '] failed', e); if (done) done(); });
 }
 
-				
 
 //EXPERIMENT PARAMETERS
        
@@ -190,11 +189,12 @@ function saveToDataPipe(tag, done) {
 		
 		
 		
-//CODE TO GET ID FROM study link
-	var subject_id = new URLSearchParams(window.location.search).get('subject') || 'anon';
-			
-		
-	
+//PARTICIPANT ID FROM THE STUDY LINK:   ...?subject=xxxx
+//No id in the URL (e.g. when you open the file yourself) -> "anon".
+
+		var subject_id = new URLSearchParams(window.location.search).get('subject') || 'anon';
+
+
 ////////////////////////////////
 //START OF EXPERIMENT PLUGINS//
 ///////////////////////////////
@@ -220,81 +220,25 @@ function saveToDataPipe(tag, done) {
 
 		 
 
-//INFORMATION PAGE PLUGIN
-		var infopg = {
-		  type:'html',
-		  force_refresh: true,
-		  pages: [{
-		  url: "infopg_mome.html",
-		  cont_btn: "Continue"}]
-		 };
-		 
-		 
-		 
-//CONSENT PAGE PLUGIN
-
-//CODE TO ENSURE THAT THEY HAVE TO CHECK THE BOX BEFORE CONTINUING
-var check_consent = function(elem) {
-  if ($('#consent_checkbox').is(':checked')) {
-    return true;
-  }
-  else {
-    alert("If you wish to participate, you must check the box next to the statement 'I understand all the above and confirm that I wish to continue.'");
-    return false;
-  }
-  return false;
-};
-	 
-		var consentpg = {
-		  type:'html',
-		  force_refresh: true,
-		  pages: [{
-		  url: "consentpg_2.html",
-		  cont_btn: "Start",
-		  check_fn: check_consent}]
-		};
-				 
-			
-//ENTER SUBJECT DETAILS PLUGIN
-	
-
 //CALLS EXPERIMENT TASK (IN ANOTHER JS SCRIPT)
 		var metacog_task = metatask_mome(practice, numPrac, numBlocks, numTrials); 
 		
 		
-//END SCREEN AND SAVE FULL DATA PLUGIN
-		var end_screen = 
-		{    
-		type: 'text',    
-		text: ['<p>Thank you for participating!<br></br>Press the spacebar to end the experiment and submit your task data.</p>'],           
+//END SCREEN PLUGIN
+		var end_screen =
+		{
+		type: 'text',
+		text: ['<p>Thank you for participating!<br></br>Press the spacebar to end the experiment and submit your task data.</p>'],
 		data: {trialType: 'exit', label: 'end_fullscreen'},
-		cont_key: 32,
-		on_finish: function() {
-
-
-		jsPsych.data.addProperties({
-
-
-		stimulus: [],
-		subject_id : subject_id,
-		worker_id : worker_id
-
-		});
-
-		
+		cont_key: 32
 		}
 
-		}
-		
 
-		
-		
 //PUSH TIMELINE FOR THE ENTIRE EXPERIMENT	
 		var tasks = [];
 
 		tasks.push(fullscreen);
 		tasks.push(welcome_block);
-	
 	
 		for(var i = 0; i < metacog_task.length; i++)
 		{
@@ -306,6 +250,7 @@ var check_consent = function(elem) {
 
 
 //EXECUTE RUN FOR THE EXPERIMENT
+
 		jsPsych.data.addProperties({ subject_id: subject_id });
 
 		jsPsych.init({
@@ -313,6 +258,8 @@ var check_consent = function(elem) {
 		display_element: $('#jspsych-target'),
 		show_progress_bar: false,
 
+		//Checkpoint upload roughly once per block (~5 data rows per trial),
+		//so a participant who quits half way still leaves usable data.
 		on_trial_finish: function() {
 			var n = jsPsych.data.getData().length;
 			if (n - lastUpload >= 200) { lastUpload = n; saveToDataPipe('checkpoint'); }
@@ -322,7 +269,8 @@ var check_consent = function(elem) {
 			$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Saving your data \u2014 please do not close this window.</p>');
 			saveToDataPipe('final', function() {
 				$('#jspsych-target').html('<p style="text-align:center; font-size:24px">Thank you for taking part!</p>');
-				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU';
+				//TO REDIRECT TO PROLIFIC, UNCOMMENT AND PASTE YOUR COMPLETION URL:
+				window.location = 'https://survey.uu.nl/jfe/form/SV_9uWLMIMxnS3CpzU?subject=subject_id';
 			});
 		}
 		});
@@ -331,7 +279,5 @@ var check_consent = function(elem) {
 
 	</script>
 </html>
-
-
 
 
